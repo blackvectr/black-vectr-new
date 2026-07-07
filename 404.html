@@ -278,6 +278,12 @@ select.inp option{background:#111;color:var(--txt)}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script src="/assets/js/app.js"></script>
+<script>
+  (function () {
+    var repoBase = '/black-vectr-new';
+    var base = location.pathname === repoBase || location.pathname.indexOf(repoBase + '/') === 0 ? repoBase : '';
+    document.write('<script src="' + base + '/assets/js/app.js"><\/script>');
+  })();
+</script>
 </body>
 </html>

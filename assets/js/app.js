@@ -10,10 +10,33 @@ const SITE = {
   url: 'https://blackvectr.com',
   email: 'contact@blackvectr.com',
   year: new Date().getFullYear(),
-  assets: '/assets'
+  assets: 'assets'
 };
 
 const PAGE_SIZE = 9;
+const APP_BASE = getAppBase();
+
+function getAppBase() {
+  if (window.location.protocol === 'file:') return '';
+  const scriptPath = document.currentScript?.src ? new URL(document.currentScript.src).pathname : '';
+  const suffix = '/assets/js/app.js';
+  if (scriptPath.endsWith(suffix)) return scriptPath.slice(0, -suffix.length);
+  return '';
+}
+
+function stripBase(pathname) {
+  if (window.location.protocol === 'file:') return '/';
+  if (APP_BASE && (pathname === APP_BASE || pathname.startsWith(APP_BASE + '/'))) {
+    return pathname.slice(APP_BASE.length) || '/';
+  }
+  return pathname || '/';
+}
+
+function withBase(path) {
+  const clean = path || '/';
+  if (!APP_BASE) return clean;
+  return clean === '/' ? APP_BASE + '/' : APP_BASE + clean;
+}
 
 // ─── Routes ──────────────────────────────────
 const ROUTES = {
@@ -34,18 +57,20 @@ function renderPage(title, description, html) {
   document.querySelector('meta[property="og:title"]')?.setAttribute('content', title);
   document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', title);
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  normalizeInternalLinks();
   updateActiveLink();
   observeElements();
   hydrateListings();
 }
 
 function navigateTo(path) {
-  if (window.location.pathname !== path) history.pushState({ path }, '', path);
+  const target = withBase(path);
+  if (window.location.pathname !== target) history.pushState({ path }, '', target);
   routePage();
 }
 
 function getCleanPath() {
-  let p = window.location.pathname;
+  let p = stripBase(window.location.pathname);
   p = p.replace(/\/index\.html$/, '').replace(/\/$/, '');
   return p || '/';
 }
@@ -72,9 +97,17 @@ function routePage() {
 function updateActiveLink() {
   const path = getCleanPath();
   document.querySelectorAll('.nav-link').forEach(a => {
-    const href = a.getAttribute('href');
+    const href = stripBase(a.getAttribute('href') || '/');
     const active = href === '/' ? path === '/' : (path === href || path.startsWith(href + '/'));
     a.classList.toggle('active', active);
+  });
+}
+
+function normalizeInternalLinks(root = document) {
+  root.querySelectorAll('a[href^="/"]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (!href || href.startsWith('//')) return;
+    a.setAttribute('href', withBase(stripBase(href)));
   });
 }
 
@@ -85,7 +118,7 @@ function setupNavigation() {
     const href = link.getAttribute('href');
     if (!href || href.startsWith('http') || href.startsWith('#') || href.startsWith('mailto') || href.startsWith('tel') || link.hasAttribute('download') || link.hasAttribute('target')) return;
     e.preventDefault();
-    if (href.startsWith('/')) navigateTo(href);
+    if (href.startsWith('/')) navigateTo(stripBase(href));
   });
   window.addEventListener('popstate', routePage);
   document.getElementById('mobileToggle')?.addEventListener('click', () => {
@@ -531,6 +564,7 @@ function renderListing(type) {
   const { slice, page, pages } = paginate(cfg.items, listingState[type]);
   listingState[type] = page;
   grid.innerHTML = cfg.cards(slice);
+  normalizeInternalLinks(grid);
   const pager = document.getElementById(cfg.pagerId);
   if (pager) pager.innerHTML = pagerHtml(page, pages);
 }
@@ -765,7 +799,7 @@ async function renderMarkdownPost(slug, kind) {
   app.innerHTML = `<div class="max-w-4xl mx-auto px-5 sm:px-8 py-32 text-center text-white/20"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
 
   try {
-    const res = await fetch(`/${dir}/${slug}.md`);
+    const res = await fetch(withBase(`/${dir}/${slug}.md`));
     if (!res.ok) throw new Error('not found');
     const md = await res.text();
 
@@ -825,6 +859,7 @@ async function renderMarkdownPost(slug, kind) {
           <aside class="toc-wrap">${toc}</aside>
         </div>
       </article>`;
+    normalizeInternalLinks(app);
     observeElements();
     initArticleUX();
     document.getElementById('shareBtn')?.addEventListener('click', function () {
@@ -841,6 +876,7 @@ async function renderMarkdownPost(slug, kind) {
         <p class="text-white/55 text-sm">The requested ${isProject ? 'project' : 'blog post'} could not be loaded.</p>
         <a href="${listHref}" class="btn-ghost inline-flex mt-6"><i class="fa-solid fa-arrow-left"></i> ${listLabel}</a>
       </div>`;
+    normalizeInternalLinks(app);
   }
 }
 
@@ -881,6 +917,7 @@ function init() {
   setupCodeCopy();
   setupPager();
   routePage();
+  normalizeInternalLinks();
 
   try {
     configureMarked();
