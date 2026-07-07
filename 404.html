@@ -280,8 +280,8 @@ select.inp option{background:#111;color:var(--txt)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>
   (function () {
-    var repoBase = '/black-vectr-new';
-    var base = location.pathname === repoBase || location.pathname.indexOf(repoBase + '/') === 0 ? repoBase : '';
+    var firstSegment = location.pathname.split('/').filter(Boolean)[0];
+    var base = location.hostname.indexOf('github.io') > -1 && firstSegment ? '/' + firstSegment : '';
     document.write('<script src="' + base + '/assets/js/app.js"><\/script>');
   })();
 </script>
